@@ -13,7 +13,7 @@ objp = np.zeros((7*9,3), np.float32)
 objp[:,:2] = 20*np.mgrid[0:7,0:9].T.reshape(-1,2)
 
 # Arrays to store object points and image points from all the images.
-folder_name = '../data/camera_calibration/mavic2/'
+folder_name = '../data/camera_calibration/big_drone/'
 objpoints = [] # 3d point in real world space
 imgpoints = [] # 2d points in image plane.
 images = glob.glob(os.path.join(folder_name,'*.png'))
@@ -29,11 +29,11 @@ for fname in images:
         corners2 = cv.cornerSubPix(gray,corners, (11,11), (-1,-1), criteria)
         imgpoints.append(corners2)
         # Draw and display the corners
-        # cv.drawChessboardCorners(img, (7,6), corners2, ret)
-        # cv.namedWindow("img", cv.WINDOW_NORMAL)
-        # cv.resizeWindow("img", 900, 600)
-        # cv.imshow('img', img)
-        # cv.waitKey(500)
+        cv.drawChessboardCorners(img, (7,6), corners2, ret)
+        cv.namedWindow("img", cv.WINDOW_NORMAL)
+        cv.resizeWindow("img", 900, 600)
+        cv.imshow('img', img)
+        cv.waitKey(0)
 cv.destroyAllWindows()
 
 ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)

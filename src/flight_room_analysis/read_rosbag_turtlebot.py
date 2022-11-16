@@ -10,11 +10,9 @@ if __name__ == '__main__':
     Description: Script to get data from flight room test on 10/26/2022
     '''
     # Get filenames, partition into test set and verification set 
-    bag_filenames = ['2022-10-26-15-06-35.bag','2022-10-26-15-17-15.bag']
-    files_test = bag_filenames[0:2]
-    files_verify = bag_filenames[2:]
+    bag_filenames = ['2022-10-26-15-06-35.bag', '2022-10-26-15-03-20.bag', '2022-10-26-15-05-12.bag', '2022-10-26-15-17-15.bag']
     bag_folder_name = '../data/flight_room/'
-    selected_file = bag_filenames[0]
+    selected_file = bag_filenames[3]
     bag_filename = os.path.join(bag_folder_name,selected_file)
 
     # Open rosbag and save data as csv

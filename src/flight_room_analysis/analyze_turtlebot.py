@@ -1,10 +1,10 @@
-from cv2 import SOLVEPNP_P3P
 import numpy as np 
 import os
 import dt_apriltags
 import pickle
 import sys
 import cv2
+import matplotlib.pyplot as plt 
 sys.path.append('../src')
 from apriltag_scripts.tag_detection_simple import get_video_tags, draw_tags
 
@@ -35,11 +35,6 @@ if __name__=='__main__':
     cam_mtx = camera_data[1]
     cam_distort = camera_data[2]
 
-    # Get video from drone and initialize AprilTag detector
-    vid_name = 'DJI_0009.MOV'
-    vid_path = os.path.join(data_dir,vid_name)
-    detector = dt_apriltags.Detector(families="tag16h5")
-
     # Load tag detection data
     tags_file = os.path.join(data_dir,'detected_tags.pickle')
     with open(tags_file, 'rb') as f:
@@ -51,36 +46,148 @@ if __name__=='__main__':
 
     ## Get estimated camera pose from cones
     # Cone coordinates in image frame (estimated from appearance)
-    cone1_px = np.array([869, 1278])
+    cone3_px = np.array([869, 1278])
     cone2_px = np.array([1315, 271])
-    cone3_px = np.array([1747, 1392])
+    cone1_px = np.array([1747, 1392])
     cones_px = np.array([cone1_px, cone2_px, cone3_px],dtype="double")
-    # cones_px = cones_px.reshape(3,2,1)
 
     # Cone coordinates in world frame
     cone1_pw = np.array([cone1[0,1], cone1[0,2], cone1[0,3]])
     cone2_pw = np.array([cone2[0,1], cone2[0,2], cone2[0,3]])
     cone3_pw = np.array([cone3[0,1], cone3[0,2], cone3[0,3]])
     cones_pw = np.array([cone1_pw, cone2_pw, cone3_pw], dtype=np.float32)
-    # cones_pw = np.ascontiguousarray(cones_pw[:,:3]).reshape(3,1,3)
-    # cones_pw = cones_pw.reshape(3,3,1)
 
     # Solve PnP problem 
     retval, rvecs, tvecs = cv2.solveP3P(cones_pw, cones_px, cam_mtx, cam_distort, flags=cv2.SOLVEPNP_P3P)
     rot_pw2px, _ = cv2.Rodrigues(rvecs[0])
-    Tw = np.zeros((4,4))
+    Tw = np.zeros((3,4))
     Tw[:3,:3] = rot_pw2px
     Tw[:3,-1] = tvecs[0].reshape(3,)
-    Tw[-1,-1] = 1
 
-    # Convert tag data to coordinates in frame
-    pi_mat = np.eye(3,4)
-    pw2pc = cam_mtx@pi_mat@Tw
-    pc2pw = np.linalg.inv(pw2pc)
+    # Find conversion between tag coordinates in image frame to coordinates in world frame 
+    leader_pf = np.zeros((2, len(detected_tags)))              # Leader pixel coordinates 
+    follower_pf = np.copy(leader_pf)
 
-    print("here")
-    # Iterate through tags and find corresponding positions
-    # for tag_set in detected_tags:
+    for idx, tag_set in enumerate(detected_tags):
+        for tag in tag_set:
+            if tag.tag_id == 0:
+                leader_pf[:,idx] = tag.center
+                continue
+            follower_pf[:,idx] = tag.center
+
+    # Convert to camera frame using distance from drone to AprilTag then convert to world frame 
+    z_cf = drone[0,3] - tbot1[0,3]           # Distance from drone to TurtleBot AprilTag (camera frame)
+    leader_cf = np.ones((3,leader_pf.shape[1]))
+    leader_cf[0:2,:] = (leader_pf[0:2,:] - np.array([[cam_mtx[0,2]],[cam_mtx[1,2]]]))*(z_cf/np.array([[cam_mtx[0,0]],[cam_mtx[1,1]]]))
+    leader_cf[2,:] = z_cf
+    leader_wf = np.linalg.inv(rot_pw2px)@(leader_cf - tvecs[0].reshape(3,1))
+
+    follower_cf = np.ones((3,follower_pf.shape[1]))
+    follower_cf[0:2,:] = (follower_pf[0:2,:] - np.array([[cam_mtx[0,2]],[cam_mtx[1,2]]]))*(z_cf/np.array([[cam_mtx[0,0]],[cam_mtx[1,1]]]))
+    follower_cf[2,:] = z_cf
+    follower_wf = np.linalg.inv(rot_pw2px)@(follower_cf - tvecs[0].reshape(3,1))
+
+    # Plot coordinates of AprilTag centers and vehicle 
+    # fig, ax = plt.subplots()
+    # ax.plot(tag_times, leader_wf[0,:], label='Leader (AprilTag)')
+    # ax.plot(tag_times, follower_wf[0,:], label='Follower (AprilTag)')
+    # ax.plot(tbot1[:,0] - tbot1[0,0], tbot1[:,1], label='TurtleBot 1')
+    # ax.plot(tbot2[:,0] - tbot2[0,0], tbot2[:,1], label='TurtleBot 2')
+    # ax.legend()
+    # ax.set_xlabel('Time (sec)')
+    # ax.set_ylabel('x-position (m)')
+    # ax.grid()
+
+    # fig, ax = plt.subplots()
+    # ax.plot(tag_times, leader_wf[1,:], label='Leader (AprilTag)')
+    # ax.plot(tag_times, follower_wf[1,:], label='Follower (AprilTag)')
+    # ax.plot(tbot1[:,0] - tbot1[0,0], tbot1[:,2], label='TurtleBot 1')
+    # ax.plot(tbot2[:,0] - tbot2[0,0], tbot2[:,2], label='TurtleBot 2')
+    # ax.legend()
+    # ax.set_xlabel('Time (sec)')
+    # ax.set_ylabel('y-position (m)')
+    # ax.grid()
+
+    # fig, ax = plt.subplots()
+    # ax.plot(tag_times, leader_wf[2,:], label='Leader (AprilTag)')
+    # ax.plot(tag_times, follower_wf[2,:], label='Follower (AprilTag)')
+    # ax.plot(tbot1[:,0] - tbot1[0,0], tbot1[:,3], label='TurtleBot 1')
+    # ax.plot(tbot2[:,0] - tbot2[0,0], tbot2[:,3], label='TurtleBot 2')
+    # ax.legend()
+    # ax.set_xlabel('Time (sec)')
+    # ax.set_ylabel('z-position (m)')
+    # ax.grid()
+
+    cones_pwh = np.ones((4, 3))
+    cones_pwh[:3,:3] = cones_pw.T
+    pixel_cone_h = cam_mtx@Tw@cones_pwh
+    pixel_cone = pixel_cone_h[:2,:]/pixel_cone_h[-1,:]
+    # print(pixel_cone)
+
+    # Convert Turtlebot coordinates to pixel frame
+    tbot1_pw = tbot1[:,1:4]
+    tbot1_pwh = np.ones((4, tbot1_pw.shape[0]))
+    tbot1_pwh[0:3,:] = tbot1_pw.T
+    pixel_tbot1_h = cam_mtx@Tw@tbot1_pwh
+    pixel_tbot1 = pixel_tbot1_h[:2,:]/pixel_tbot1_h[-1,:]
+
+    tbot2_pw = tbot2[:,1:4]
+    tbot2_pwh = np.ones((4, tbot2_pw.shape[0]))
+    tbot2_pwh[0:3,:] = tbot2_pw.T
+    pixel_tbot2_h = cam_mtx@Tw@tbot2_pwh
+    pixel_tbot2 = pixel_tbot2_h[:2,:]/pixel_tbot2_h[-1,:]
+
+    # Compare triangles
+    # dist_1c = np.sqrt(np.sum((cone1_px - cone2_px)**2))
+    # dist_2c = np.sqrt(np.sum((cone2_px - cone3_px)**2))
+    # dist_3c = np.sqrt(np.sum((cone1_px - cone3_px)**2))
+    # r1c = dist_1c/dist_2c
+    # r2c = dist_1c/dist_3c
+    # r3c = dist_2c/dist_3c
+    # print(f'Ratios (camera): {r1c}\n{r2c}\n{r3c}')
+
+    # dist_1w = np.sqrt(np.sum((cone1_pw[0:2] - cone2_pw[0:2])**2))
+    # dist_2w = np.sqrt(np.sum((cone2_pw[0:2] - cone3_pw[0:2])**2))
+    # dist_3w = np.sqrt(np.sum((cone1_pw[0:2] - cone3_pw[0:2])**2))
+    # r1w = dist_1w/dist_2w
+    # r2w = dist_1w/dist_3w
+    # r3w = dist_2w/dist_3w
+    # print(f'Ratios (world): {r1w}\n{r2w}\n{r3w}')
+
+    fig, ax = plt.subplots()
+    ax.plot(leader_wf[0,:], leader_wf[1,:], label='Leader (AprilTag)')
+    ax.plot(follower_wf[0,:], follower_wf[1,:], label='Follower (AprilTag)')
+    ax.plot(tbot1[:,1], tbot1[:,2], label='TurtleBot 1')
+    ax.plot(tbot2[:,1], tbot2[:,2], label='TurtleBot 2')
+    ax.scatter(cone1[0,1], cone1[0,2], label='Cone 1')
+    ax.scatter(cone2[0,1], cone2[0,2], label='Cone 2')
+    ax.scatter(cone3[0,1], cone3[0,2], label='Cone 3')
+    ax.legend()
+    ax.set_xlabel('x-position (m)')
+    ax.set_ylabel('y-position (m)')
+    ax.axis((-1.5, 1, -.5, 0.9))
+    ax.axis('equal')
+    ax.grid()
+
+    fig, ax = plt.subplots()
+    ax.scatter(cone1_px[0],cone1_px[1], label='Cone 1')
+    ax.scatter(cone2_px[0],cone2_px[1], label='Cone 2')
+    ax.scatter(cone3_px[0],cone3_px[1], label='Cone 3')
+    ax.scatter(pixel_cone[0,0],pixel_cone[1,0], label='Cone 1 - transform')
+    ax.scatter(pixel_cone[0,1],pixel_cone[1,1], label='Cone 2 - transform')
+    ax.scatter(pixel_cone[0,2],pixel_cone[1,2], label='Cone 3 - transform')
+    ax.plot(leader_pf[0,:], leader_pf[1,:], label='Leader (AprilTag)')
+    ax.plot(follower_pf[0,:], follower_pf[1,:], label='Follower (AprilTag)')
+    ax.plot(pixel_tbot1[0,:], pixel_tbot1[1,:], label='TurtleBot 1')
+    ax.plot(pixel_tbot2[0,:], pixel_tbot2[1,:], label='TurtleBot 2')
+    ax.legend()
+    ax.grid()
+    ax.set_title('Pixel Frame')
+    ax.axis((0, 2688, 0, 1512))
+    ax.invert_yaxis()
+    ax.xaxis.set_label_position('top') 
+    ax.axis('equal')
+    plt.show()
         
 
 
