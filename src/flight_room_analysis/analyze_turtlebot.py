@@ -1,3 +1,4 @@
+from cv2 import COLORMAP_CIVIDIS
 import numpy as np 
 import os
 import dt_apriltags
@@ -5,8 +6,10 @@ import pickle
 import sys
 import cv2
 import matplotlib.pyplot as plt 
+import matplotlib as mpl
 sys.path.append('../src')
 from apriltag_scripts.tag_detection_simple import get_video_tags, draw_tags
+from cv2_tools.CoordinateTransform import pixelToWorld
 
 if __name__=='__main__':
     '''
@@ -77,15 +80,9 @@ if __name__=='__main__':
 
     # Convert to camera frame using distance from drone to AprilTag then convert to world frame 
     z_cf = drone[0,3] - tbot1[0,3]           # Distance from drone to TurtleBot AprilTag (camera frame)
-    leader_cf = np.ones((3,leader_pf.shape[1]))
-    leader_cf[0:2,:] = (leader_pf[0:2,:] - np.array([[cam_mtx[0,2]],[cam_mtx[1,2]]]))*(z_cf/np.array([[cam_mtx[0,0]],[cam_mtx[1,1]]]))
-    leader_cf[2,:] = z_cf
-    leader_wf = np.linalg.inv(rot_pw2px)@(leader_cf - tvecs[0].reshape(3,1))
-
-    follower_cf = np.ones((3,follower_pf.shape[1]))
-    follower_cf[0:2,:] = (follower_pf[0:2,:] - np.array([[cam_mtx[0,2]],[cam_mtx[1,2]]]))*(z_cf/np.array([[cam_mtx[0,0]],[cam_mtx[1,1]]]))
-    follower_cf[2,:] = z_cf
-    follower_wf = np.linalg.inv(rot_pw2px)@(follower_cf - tvecs[0].reshape(3,1))
+    leader_wf = pixelToWorld(leader_pf, cam_mtx, rot_pw2px, tvecs[0].reshape(3,1), z_cf)
+    follower_wf = pixelToWorld(follower_pf, cam_mtx, rot_pw2px, tvecs[0].reshape(3,1), z_cf)
+    cones_wf = pixelToWorld(cones_px.T, cam_mtx, rot_pw2px, tvecs[0].reshape(3,1), drone[0,3])
 
     # Plot coordinates of AprilTag centers and vehicle 
     # fig, ax = plt.subplots()
@@ -137,31 +134,20 @@ if __name__=='__main__':
     pixel_tbot2_h = cam_mtx@Tw@tbot2_pwh
     pixel_tbot2 = pixel_tbot2_h[:2,:]/pixel_tbot2_h[-1,:]
 
-    # Compare triangles
-    # dist_1c = np.sqrt(np.sum((cone1_px - cone2_px)**2))
-    # dist_2c = np.sqrt(np.sum((cone2_px - cone3_px)**2))
-    # dist_3c = np.sqrt(np.sum((cone1_px - cone3_px)**2))
-    # r1c = dist_1c/dist_2c
-    # r2c = dist_1c/dist_3c
-    # r3c = dist_2c/dist_3c
-    # print(f'Ratios (camera): {r1c}\n{r2c}\n{r3c}')
-
-    # dist_1w = np.sqrt(np.sum((cone1_pw[0:2] - cone2_pw[0:2])**2))
-    # dist_2w = np.sqrt(np.sum((cone2_pw[0:2] - cone3_pw[0:2])**2))
-    # dist_3w = np.sqrt(np.sum((cone1_pw[0:2] - cone3_pw[0:2])**2))
-    # r1w = dist_1w/dist_2w
-    # r2w = dist_1w/dist_3w
-    # r3w = dist_2w/dist_3w
-    # print(f'Ratios (world): {r1w}\n{r2w}\n{r3w}')
-
     fig, ax = plt.subplots()
-    ax.plot(leader_wf[0,:], leader_wf[1,:], label='Leader (AprilTag)')
-    ax.plot(follower_wf[0,:], follower_wf[1,:], label='Follower (AprilTag)')
-    ax.plot(tbot1[:,1], tbot1[:,2], label='TurtleBot 1')
-    ax.plot(tbot2[:,1], tbot2[:,2], label='TurtleBot 2')
-    ax.scatter(cone1[0,1], cone1[0,2], label='Cone 1')
-    ax.scatter(cone2[0,1], cone2[0,2], label='Cone 2')
-    ax.scatter(cone3[0,1], cone3[0,2], label='Cone 3')
+    cm = plt.get_cmap('viridis')
+    iter = 6
+    ax.set_color_cycle([cm(1.*i/(iter+1)) for i in range(1,iter+2)])
+    # ax.plot(leader_wf[0,:], leader_wf[1,:], label='Leader (AprilTag)')
+    # ax.plot(follower_wf[0,:], follower_wf[1,:], label='Follower (AprilTag)')
+    # ax.plot(tbot1[:,1], tbot1[:,2], label='TurtleBot 1')
+    # ax.plot(tbot2[:,1], tbot2[:,2], label='TurtleBot 2')
+    ax.scatter(cone1[0,1], cone1[0,2], label='Cone 1 (optitrack)')
+    ax.scatter(cone2[0,1], cone2[0,2], label='Cone 2 (optitrack)')
+    ax.scatter(cone3[0,1], cone3[0,2], label='Cone 3 (optitrack)')
+    ax.scatter(cones_wf[0,0], cones_wf[1,0], label='Cone 1 (drone)')
+    ax.scatter(cones_wf[0,1], cones_wf[1,1], label='Cone 2 (drone)')
+    ax.scatter(cones_wf[0,2], cones_wf[1,2], label='Cone 3 (drone)') 
     ax.legend()
     ax.set_xlabel('x-position (m)')
     ax.set_ylabel('y-position (m)')
@@ -169,24 +155,24 @@ if __name__=='__main__':
     ax.axis('equal')
     ax.grid()
 
-    fig, ax = plt.subplots()
-    ax.scatter(cone1_px[0],cone1_px[1], label='Cone 1')
-    ax.scatter(cone2_px[0],cone2_px[1], label='Cone 2')
-    ax.scatter(cone3_px[0],cone3_px[1], label='Cone 3')
-    ax.scatter(pixel_cone[0,0],pixel_cone[1,0], label='Cone 1 - transform')
-    ax.scatter(pixel_cone[0,1],pixel_cone[1,1], label='Cone 2 - transform')
-    ax.scatter(pixel_cone[0,2],pixel_cone[1,2], label='Cone 3 - transform')
-    ax.plot(leader_pf[0,:], leader_pf[1,:], label='Leader (AprilTag)')
-    ax.plot(follower_pf[0,:], follower_pf[1,:], label='Follower (AprilTag)')
-    ax.plot(pixel_tbot1[0,:], pixel_tbot1[1,:], label='TurtleBot 1')
-    ax.plot(pixel_tbot2[0,:], pixel_tbot2[1,:], label='TurtleBot 2')
-    ax.legend()
-    ax.grid()
-    ax.set_title('Pixel Frame')
-    ax.axis((0, 2688, 0, 1512))
-    ax.invert_yaxis()
-    ax.xaxis.set_label_position('top') 
-    ax.axis('equal')
+    # fig, ax = plt.subplots()
+    # ax.scatter(cone1_px[0],cone1_px[1], label='Cone 1')
+    # ax.scatter(cone2_px[0],cone2_px[1], label='Cone 2')
+    # ax.scatter(cone3_px[0],cone3_px[1], label='Cone 3')
+    # ax.scatter(pixel_cone[0,0],pixel_cone[1,0], label='Cone 1 - transform')
+    # ax.scatter(pixel_cone[0,1],pixel_cone[1,1], label='Cone 2 - transform')
+    # ax.scatter(pixel_cone[0,2],pixel_cone[1,2], label='Cone 3 - transform')
+    # ax.plot(leader_pf[0,:], leader_pf[1,:], label='Leader (AprilTag)')
+    # ax.plot(follower_pf[0,:], follower_pf[1,:], label='Follower (AprilTag)')
+    # ax.plot(pixel_tbot1[0,:], pixel_tbot1[1,:], label='TurtleBot 1')
+    # ax.plot(pixel_tbot2[0,:], pixel_tbot2[1,:], label='TurtleBot 2')
+    # ax.legend()
+    # ax.grid()
+    # ax.set_title('Pixel Frame')
+    # ax.axis((0, 2688, 0, 1512))
+    # ax.invert_yaxis()
+    # ax.xaxis.set_label_position('top') 
+    # ax.axis('equal')
     plt.show()
         
 
