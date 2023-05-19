@@ -1,10 +1,14 @@
 import cv2
+import os
 
 
-folder = "./thunderhill/run_4/"
-mov = "DJI_0007"
-filepath = folder+mov+".MOV"
+# folder = "./thunderhill/run_4/"
+# mov = "DJI_0007"
+# filepath = folder+mov+".MOV"
 
+folder = "../data/thunderhill/11-16-2022/drone_footage/"
+mov = "DJI_0017"
+filepath = os.path.join(folder, mov)
 
 def video_to_mp4(input, output, fps: int = 0, frame_size: tuple = (), fourcc: str = "H264"):
     vidcap = cv2.VideoCapture(input)

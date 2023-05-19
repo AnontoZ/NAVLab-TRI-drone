@@ -14,12 +14,12 @@ if __name__ == '__main__':
     '''
     # Get filenames, partition into test set and verification set 
     # bag_filenames = ['2022-11-15-17-01-22.bag']
-    # bag_filenames = ['2022-11-16-14-44-48.bag', '2022-11-16-14-50-25.bag', '2022-11-16-14-54-13.bag', 
-    #     '2022-11-16-14-57-28.bag', '2022-11-16-14-59-58.bag', '2022-11-16-15-02-59.bag']
-    # bag_folder_name = '../data/thunderhill/11-16-2022'
-    # selected_file = bag_filenames[0]
-    bag_folder_name = '../data/camera_calibration/big_drone_ros/'
-    selected_file = '2022-12-02-14-34-29.bag'
+    bag_filenames = ['2022-11-16-14-44-48.bag', '2022-11-16-14-50-25.bag', '2022-11-16-14-54-13.bag', 
+        '2022-11-16-14-57-28.bag', '2022-11-16-14-59-58.bag', '2022-11-16-15-02-59.bag']
+    bag_folder_name = '../data/thunderhill/11-16-2022'
+    selected_file = bag_filenames[0]
+    # bag_folder_name = '../data/camera_calibration/big_drone_ros/'
+    # selected_file = '2022-12-02-14-34-29.bag'
     bag_filename = os.path.join(bag_folder_name,selected_file)
 
     # Open rosbag and save images to dataframe and pickle

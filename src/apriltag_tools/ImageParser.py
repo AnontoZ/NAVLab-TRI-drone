@@ -1,7 +1,7 @@
 from numpy import imag
 import cv2
     
-def parse_img( img, units=3):
+def parse_img(img, units=3):
     # Cut image into units-by-units chunks
     H, W = img.shape[:2]
     dx = W//(units+1)

@@ -112,23 +112,14 @@ if __name__=='__main__':
     west_cone = (227, 243)
     cones_px = [center_cone, east_cone, north_cone, north_east_cone, north_west_cone, south_cone, south_east_cone, 
         south_west_cone, west_cone]
-    # cones_px = [center_cone, east_cone, north_cone, north_east_cone, north_west_cone]
-    # Other cones: south_cone, south_east_cone, south_west_cone, west_cone
     cone_px = np.asarray(cones_px, dtype="double")
-
-    # Test cones
-    south_cone_enu = cones_enu[-4,:]
-    south_east_cone_enu = cones_enu[-3,:]
-    south_west_cone_enu = cones_enu[-2,:]
-    west_cone_enu = cones_enu[-1,:]
-    # cones_enu = cones_enu[:-4,:]
 
     # Solve PnP problem 
     retval, rvecs, tvecs = cv2.solvePnP(cones_enu, cone_px, cam_mtx, cam_distort)
     rot_pw2px, _ = cv2.Rodrigues(rvecs[:,0])
     Tw = np.zeros((3,4))
     Tw[:3,:3] = rot_pw2px
-    Tw[:3,-1] = tvecs[:,0]
+    Tw[:3,-1] = tvecs[:,0]              # NOTE: Here is the transformation matrix
 
     # Find conversion between tag coordinates in image frame to coordinates in world frame 
     # leader_pf = np.zeros((2, len(detected_tags)))              # Leader pixel coordinates 

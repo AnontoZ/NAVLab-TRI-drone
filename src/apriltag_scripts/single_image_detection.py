@@ -16,7 +16,7 @@ if __name__ == '__main__':
     # image_name = "image_29"
 
     # Get path to image
-    folder = "../thunderhill/run5_tandem/dt2e-5/"
+    folder = "../data/thunderhill/run5_tandem/dt2e-5/"
     image_name = "image_1"
     filepath_png = folder + image_name +".png"
 

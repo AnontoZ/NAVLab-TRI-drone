@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 from cv_bridge import CvBridge
+import cv2
 
 if __name__=='__main__':
     '''
@@ -46,6 +47,10 @@ if __name__=='__main__':
 
 
     imgs_df = imgs_df.iloc[cam_close_idx]
+
+    # for img in imgs_df['imgs']:
+    cv2.imshow("First image", imgs_df['imgs'].iloc[0])
+    cv2.waitKey(0)
     check_equal = np.allclose(imgs_df['time'].to_numpy(), cam_df['Time'].to_numpy(), 1e-5)
     assert check_equal
 
@@ -54,7 +59,7 @@ if __name__=='__main__':
     cam_df.to_pickle(os.path.join(bag_folder_name,'df_cam.pickle'))
     imgs_df.to_pickle(os.path.join(bag_folder_name, 'df_img.pickle'))
 
-    # df_times.to_csv(os.path.join(bag_folder_name,'df_times.csv'))
+    df_times.to_csv(os.path.join(bag_folder_name,'df_times.csv'))
     
     
 

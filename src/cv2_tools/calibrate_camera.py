@@ -14,20 +14,20 @@ objp = np.zeros((7*9,3), np.float32)
 objp[:,:2] = 20*np.mgrid[0:7,0:9].T.reshape(-1,2)
 
 # Arrays to store object points and image points from all the images.
-folder_name = '../data/camera_calibration/big_drone_ros/'
+folder_name = '../data/camera_calibration/big_drone/'
 objpoints = [] # 3d point in real world space
 imgpoints = [] # 2d points in image plane.
-# images = glob.glob(os.path.join(folder_name,'*.png'))
+images = glob.glob(os.path.join(folder_name,'*.png'))
 
-bag_dir = '../data/camera_calibration/big_drone_ros/'
-imgs_fname = os.path.join(bag_dir, 'df_img.pickle')
-imgs_df = pd.read_pickle(imgs_fname)
-images = imgs_df['imgs'].tolist()
+# bag_dir = '../data/camera_calibration/big_drone_ros/'
+# imgs_fname = os.path.join(bag_dir, 'df_img.pickle')
+# imgs_df = pd.read_pickle(imgs_fname)
+# images = imgs_df['imgs'].tolist()
 img_count = 0
 
-# for fname in images:
-for img in images:
-    # img = cv.imread(fname)
+for fname in images:
+# for img in images:
+    img = cv.imread(fname)
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     # Find the chess board corners
     ret, corners = cv.findChessboardCorners(gray, (7,9), None)
